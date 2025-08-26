@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Local Image Converter</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Local Image Converter</h1>
+
+    <section class="controls">
+      <label>Longest side (px)
+        <input id="size" type="number" min="1" value="1200" />
+      </label>
+
+      <label>File type
+        <select id="filetype">
+          <option value="image/jpeg">JPG</option>
+          <option value="image/webp">WEBP</option>
+          <option value="image/avif">AVIF</option>
+          <option value="image/png">PNG (alpha)</option>
+        </select>
+      </label>
+
+      <label>Quality (0–1)
+        <input id="quality" type="number" min="0" max="1" step="0.05" value="0.8" />
+      </label>
+
+      <label>Max concurrent tasks
+        <input id="concurrency" type="number" min="1" max="8" value="3" />
+      </label>
+
+      <div class="note">
+        <small>Save location is chosen by your browser when download starts (can't default to Desktop).</small>
+      </div>
+    </section>
+
+    <section class="uploader">
+      <div id="dropzone" class="dropzone">Drag & drop files here or <button id="selectBtn">select files</button></div>
+      <input id="fileInput" type="file" accept=".psd,image/*" multiple hidden />
+      <div id="queue" class="queue"></div>
+    </section>
+
+    <footer class="footer">
+      <button id="clearBtn">Clear queue</button>
+      <span id="status"></span>
+    </footer>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
