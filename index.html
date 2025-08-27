@@ -13,7 +13,7 @@
 
     <section class="controls">
       <label>Longest side (px)
-        <input id="size" type="number" min="1" value="1200" />
+        <input id="size" type="number" min="1" value="2400" />
       </label>
 
       <label>File type
@@ -31,6 +31,15 @@
 
       <label>Max concurrent tasks
         <input id="concurrency" type="number" min="1" max="8" value="3" />
+      </label>
+
+      <label>
+        Prefix:
+        <input type="text" id="prefix" placeholder="e.g. resized_" />
+      </label>
+      <label>
+        Suffix:
+        <input type="text" id="suffix" placeholder="e.g. _web" />
       </label>
 
       <div class="note">
