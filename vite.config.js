@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: 'https://kaspar-allenbach.github.io/image-resizer/',
+  base: '/image-resizer/', // GitHub Pages repo name
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    emptyOutDir: true,
   }
 })
