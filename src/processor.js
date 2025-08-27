@@ -73,21 +73,37 @@ async function canvasFromFile(file) {
     if (name.endsWith('.tif') || name.endsWith('.tiff')) {
         const buf = await file.arrayBuffer();
         const ifds = UTIF.decode(buf);
-        UTIF.decodeImages(buf, ifds);
 
-        const first = ifds[0]; // just take first page
+        if (!ifds.length) throw new Error("No IFDs found in TIFF");
+
+        const first = ifds[0];
+
+        // Required: actually decode the image first
+        UTIF.decodeImage(buf, first);
+
+        // Extract pixel buffer (RGBA8)
         const rgba = UTIF.toRGBA8(first);
 
+        // Width/height from tags
+        const width = first.width || first.t256;
+        const height = first.height || first.t257;
+
+        if (!width || !height) {
+            throw new Error("Invalid TIFF: missing dimensions");
+        }
+
+        // Draw onto canvas
         const c = document.createElement('canvas');
-        c.width = first.width;
-        c.height = first.height;
+        c.width = width;
+        c.height = height;
         const ctx = c.getContext('2d');
-        const imgData = ctx.createImageData(c.width, c.height);
+        const imgData = ctx.createImageData(width, height);
         imgData.data.set(rgba);
         ctx.putImageData(imgData, 0, 0);
 
         return c;
     }
+
 
     // fallback: jpg/png/webp/avif
     const url = URL.createObjectURL(file);
