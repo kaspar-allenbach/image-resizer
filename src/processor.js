@@ -4,6 +4,7 @@ import {
 import {
     saveAs
 } from 'file-saver';
+import * as UTIF from 'utif';
 
 const queue = [];
 let running = 0;
@@ -61,8 +62,34 @@ function renderQueueItem(item) {
     item._el = div;
     item._progressBar = div.querySelector('i')
 }
+
 async function canvasFromFile(file) {
-    if (file.name.toLowerCase().endsWith('.psd')) return await psdToCanvas(file);
+    const name = file.name.toLowerCase();
+
+    if (name.endsWith('.psd')) {
+        return await psdToCanvas(file);
+    }
+
+    if (name.endsWith('.tif') || name.endsWith('.tiff')) {
+        const buf = await file.arrayBuffer();
+        const ifds = UTIF.decode(buf);
+        UTIF.decodeImages(buf, ifds);
+
+        const first = ifds[0]; // just take first page
+        const rgba = UTIF.toRGBA8(first);
+
+        const c = document.createElement('canvas');
+        c.width = first.width;
+        c.height = first.height;
+        const ctx = c.getContext('2d');
+        const imgData = ctx.createImageData(c.width, c.height);
+        imgData.data.set(rgba);
+        ctx.putImageData(imgData, 0, 0);
+
+        return c;
+    }
+
+    // fallback: jpg/png/webp/avif
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.src = url;
@@ -72,7 +99,7 @@ async function canvasFromFile(file) {
     c.height = img.naturalHeight;
     c.getContext('2d').drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
-    return c
+    return c;
 }
 
 function scaleCanvas(c, max) {
