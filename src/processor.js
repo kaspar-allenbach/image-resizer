@@ -97,7 +97,14 @@ async function processItem(it) {
         const resized = scaleCanvas(src, it.options.size);
         pb.style.width = '80%';
         const blob = await exportCanvasToBlob(resized, it.options.type, it.options.quality);
-        saveAs(blob, it.file.name.replace(/\.[^.]+$/, '.') + (it.options.type.split('/')[1] || 'png'));
+
+        // NEW: build filename with prefix/suffix
+        const baseName = it.file.name.replace(/\.[^.]+$/, '');
+        const ext = it.options.type.split('/')[1] || 'png';
+        const finalName = (it.options.prefix||'') + baseName + (it.options.suffix||'') + '.' + ext;
+
+        saveAs(blob, finalName);
+
         pb.style.width = '100%';
         it.status = 'done';
         setTimeout(() => it._el.remove(), 1500)
