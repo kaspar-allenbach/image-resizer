@@ -1,9 +1,5 @@
-import {
-    psdToCanvas
-} from './psd-handler.js';
-import {
-    saveAs
-} from 'file-saver';
+import { psdToCanvas } from './psd-handler.js';
+import { saveAs } from 'file-saver';
 import * as UTIF from 'utif';
 
 const queue = [];
