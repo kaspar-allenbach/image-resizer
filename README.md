@@ -1,3 +1,5 @@
+https://kaspar-allenbach.github.io/image-resizer/
+
 # Local Image Converter (GitHub Pages ready)
 
 A client-side image converter & resizer that runs entirely in the browser. Supports PSD (when `psd.js` is provided), JPG, WEBP, AVIF, PNG, multi-file upload, and stores UI options in `localStorage`.
