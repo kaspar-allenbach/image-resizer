@@ -1,7 +1,7 @@
 :root {
-	--bg: #545252;
+	--bg: #282828;
 	--muted: #666;
-	--accent: #0b67ff;
+	--accent: #25af37;
 	--border: #ddd;
     --font-family: "Tiny5", cursive;
     --font-weight: 700;
@@ -54,7 +54,7 @@ button {
 	flex-direction: column;
 	font-size: 0.9rem
 }
-input {
+input, select {
     padding: 0.8rem;
     font-family: var(--font-family);
     font-size: 1.5rem;
