@@ -4,43 +4,77 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Kaspars Local Image Resizer</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Tiny5&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
   <link rel="stylesheet" href="src/styles.css" />
 </head>
 <body>
   <main class="container">
-    <h1>Kaspars Local Image Resizer</h1>
-    <p>Drag & Drop your image ans select what you want. Conversion is done locally on your computer. No data exchange. I'm too lazy to write a Photoshop Script</p>
+    <div class="header">
+      <a href="https://atelier.kaspar-allenbach.ch">
+        <img src="kaspar-allenbach-logo.svg" alt="">
+      </a>
+          <h1>Kaspars Local Image Resizer</h1>
+    </div>
+              <p>Drag & Drop your image ans select what you want. Conversion is done locally on your computer. No data exchange. I'm too lazy to write a Photoshop Script</p>
 
     <section class="controls">
-      <label>Longest side (px)
-        <input id="size" type="number" min="1" value="2400" />
-      </label>
+      <div class="controlGroup">
+        <label><span>Longest side (px)</span>
+          <input id="size" type="number" min="1" value="2400" />
+        </label>
 
-      <label>File type
-        <select id="filetype">
-          <option value="image/jpeg">JPG</option>
-          <option value="image/webp">WEBP</option>
-          <option value="image/avif">AVIF</option>
-          <option value="image/png">PNG (alpha)</option>
-        </select>
-      </label>
+        <label>
+          <span>File type</span>
+          <select id="filetype">
+            <option value="image/jpeg">JPG</option>
+            <option value="image/webp">WEBP</option>
+            <option value="image/avif">AVIF</option>
+            <option value="image/png">PNG (alpha)</option>
+          </select>
+        </label>
 
-      <label>Quality (0–1)
-        <input id="quality" type="number" min="0" max="1" step="0.05" value="0.8" />
-      </label>
+        <label><span>Quality (0–1)</span>
+          <input id="quality" type="number" min="0" max="1" step="0.05" value="0.8" />
+        </label>
 
-      <label>Max concurrent tasks
-        <input id="concurrency" type="number" min="1" max="8" value="3" />
-      </label>
-      <label>
-        Prefix:
-        <input type="text" id="prefix" placeholder="e.g. resized_" />
-      </label>
-      <label>
-        Suffix:
-        <input type="text" id="suffix" placeholder="e.g. _web" />
-      </label>
-
+        <label><span>Max concurrent tasks</span>
+          <input id="concurrency" type="number" min="1" max="8" value="3" />
+        </label>
+      </div>
+      <div class="controlGroup">
+        <label><span>Prefix:</span>
+          <input type="text" id="prefix" placeholder="ir-" />
+        </label>
+        <label>
+          <span>Suffix:</span>
+          <input type="text" id="suffix" placeholder="_web" />
+        </label>
+      </div>
+      <div class="controlGroup">
+        <label>
+          <span>Aspect Ratio Width:</span>
+          <input type="number" id="aspectRatioWidth" placeholder="16">
+        </label>
+        <label>
+          <span>Aspect Ratio Height:</span>
+          <input type="number" id="aspectRatioHeight" placeholder="9">
+        </label>
+        <label>
+          <span>Crop Position:</span>
+          <select id="cropPosition">
+            <option value="center">Center</option>
+            <option value="top-left">Top Left</option>
+            <option value="top-right">Top Right</option>
+            <option value="bottom-left">Bottom Left</option>
+            <option value="bottom-right">Bottom Right</option>
+          </select>
+        </label>
+      </div>
       <div class="note">
         <small>Save location is chosen by your browser when download starts (can't default to Desktop).</small>
       </div>

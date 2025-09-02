@@ -39,6 +39,46 @@ function updateStatus() {
     const p = queue.filter(i => i.status === 'processing').length;
     s.textContent = `Queued: ${q} • Processing: ${p}`
 }
+function cropCanvasToAspectRatio(c, aspect, position = 'center') {
+  if (!aspect || !aspect.w || !aspect.h) return c;
+
+  const targetRatio = aspect.w / aspect.h;
+  const currentRatio = c.width / c.height;
+
+  // If already effectively equal, skip
+  if (Math.abs(currentRatio - targetRatio) < 1e-6) return c;
+
+  let sx = 0, sy = 0, sw = c.width, sh = c.height;
+
+  if (currentRatio > targetRatio) {
+    // Image too wide → crop width
+    sw = Math.round(c.height * targetRatio);
+    if (position.includes('left')) {
+      sx = 0;
+    } else if (position.includes('right')) {
+      sx = c.width - sw;
+    } else {
+      sx = Math.round((c.width - sw) / 2);
+    }
+  } else {
+    // Image too tall → crop height
+    sh = Math.round(c.width / targetRatio);
+    if (position.includes('top')) {
+      sy = 0;
+    } else if (position.includes('bottom')) {
+      sy = c.height - sh;
+    } else {
+      sy = Math.round((c.height - sh) / 2);
+    }
+  }
+
+  const out = document.createElement('canvas');
+  out.width = sw;
+  out.height = sh;
+  const ctx = out.getContext('2d');
+  ctx.drawImage(c, sx, sy, sw, sh, 0, 0, sw, sh);
+  return out;
+}
 
 function renderQueueItem(item) {
     const div = document.createElement('div');
@@ -63,8 +103,9 @@ async function canvasFromFile(file) {
     const name = file.name.toLowerCase();
 
     if (name.endsWith('.psd')) {
-        return await psdToCanvas(file);
+        return await psdToCanvas(file, options.aspectRatio, options.cropPosition);
     }
+
 
     if (name.endsWith('.tif') || name.endsWith('.tiff')) {
         const buf = await file.arrayBuffer();
@@ -127,34 +168,43 @@ async function exportCanvasToBlob(c, t, q) {
     return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej('toBlob failed'), t, q))
 }
 async function processItem(it) {
-    it.status = 'processing';
-    const pb = it._progressBar;
-    try {
-        pb.style.width = '20%';
-        const src = await canvasFromFile(it.file);
-        pb.style.width = '50%';
-        const resized = scaleCanvas(src, it.options.size);
-        pb.style.width = '80%';
-        const blob = await exportCanvasToBlob(resized, it.options.type, it.options.quality);
+  it.status = 'processing';
+  const pb = it._progressBar;
+  try {
+    pb.style.width = '20%';
+    let src = await canvasFromFile(it.file);
 
-        // NEW: build filename with prefix/suffix
-        const baseName = it.file.name.replace(/\.[^.]+$/, '');
-        const ext = it.options.type.split('/')[1] || 'png';
-        const finalName = (it.options.prefix||'') + baseName + (it.options.suffix||'') + '.' + ext;
-
-        saveAs(blob, finalName);
-
-        pb.style.width = '100%';
-        it.status = 'done';
-        setTimeout(() => it._el.remove(), 1500)
-    } catch (e) {
-        console.error(e);
-        it.status = 'error';
-        it._el.querySelector('.meta').innerHTML += '<div style="color:red">Error</div>'
-    } finally {
-        updateStatus()
+    // 🔹 Apply aspect ratio crop first (if provided)
+    if (it.options.aspectRatio) {
+      src = cropCanvasToAspectRatio(src, it.options.aspectRatio, it.options.cropPosition);
     }
+
+    pb.style.width = '50%';
+    const resized = scaleCanvas(src, it.options.size);
+
+    pb.style.width = '80%';
+    const blob = await exportCanvasToBlob(resized, it.options.type, it.options.quality);
+
+    // Filename with prefix/suffix
+    const baseName = it.file.name.replace(/\.[^.]+$/, '');
+    const ext = it.options.type.split('/')[1] || 'png';
+    const finalName = (it.options.prefix || '') + baseName + (it.options.suffix || '') + '.' + ext;
+
+    saveAs(blob, finalName);
+
+    pb.style.width = '100%';
+    it.status = 'done';
+    setTimeout(() => it._el.remove(), 1500);
+  } catch (e) {
+    console.error(e);
+    it.status = 'error';
+    it._el.querySelector('.meta').innerHTML += '<div style="color:red">Error</div>';
+  } finally {
+    updateStatus();
+  }
 }
+
+
 export async function processQueue() {
     const c = window.__IMG_CONVERTER.getOptions().concurrency || 3;
     if (running >= c) return;
