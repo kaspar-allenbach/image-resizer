@@ -11,11 +11,10 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    environment: github-pages
     steps:
-      - name: Checkout source
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -29,7 +28,13 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Upload dist to GitHub Pages
+      - name: Upload dist as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
         with:
-          artifact_path: ./dist
+          # this will deploy the artifact uploaded in the previous step
+          artifact_name: dist
