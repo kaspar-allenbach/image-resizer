@@ -28,13 +28,10 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Upload dist as Pages artifact
+      - name: Upload build to Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        with:
-          # this will deploy the artifact uploaded in the previous step
-          artifact_name: dist
