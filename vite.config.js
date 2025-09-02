@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/image-resizer/', // only affects build
+  base: '/image-resizer/', // GitHub Pages subpath
+  root: '.', // Ensure Vite uses the current directory as root
   build: {
     outDir: 'dist',
     emptyOutDir: true,
