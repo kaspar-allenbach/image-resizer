@@ -187,7 +187,16 @@ async function processItem(it) {
 
     // Filename with prefix/suffix
     const baseName = it.file.name.replace(/\.[^.]+$/, '');
-    const ext = it.options.type.split('/')[1] || 'png';
+
+    // Get original extension
+    const originalExt = it.file.name.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
+    let ext = it.options.type.split('/')[1] || 'png';
+
+    // For JPEG files, preserve original extension (.jpg vs .jpeg)
+    if (ext === 'jpeg' && (originalExt === 'jpg' || originalExt === 'jpeg')) {
+        ext = originalExt;
+    }
+
     const finalName = (it.options.prefix || '') + baseName + (it.options.suffix || '') + '.' + ext;
 
     saveAs(blob, finalName);
