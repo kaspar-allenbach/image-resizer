@@ -2,24 +2,13 @@ import { psdToCanvas } from './psd-handler.js';
 import { saveAs } from 'file-saver';
 import * as UTIF from 'utif';
 
-// Try to import optimization libraries - with error handling
-let encodePNG, encodeJPEG, encodeWebP;
-let optimizationAvailable = false;
+// Import optimization libraries
+import { encode as encodePNG } from '@jsquash/png';
+import { encode as encodeJPEG } from '@jsquash/jpeg';
+import { encode as encodeWebP } from '@jsquash/webp';
+import { optimise as optimisePNG } from '@jsquash/oxipng';
 
-try {
-    const pngModule = await import('@jsquash/png');
-    const jpegModule = await import('@jsquash/jpeg');
-    const webpModule = await import('@jsquash/webp');
-    
-    encodePNG = pngModule.encode;
-    encodeJPEG = jpegModule.encode;
-    encodeWebP = webpModule.encode;
-    optimizationAvailable = true;
-    console.log('✅ Image optimization libraries loaded successfully');
-} catch (error) {
-    console.warn('⚠️ Image optimization libraries not available, using fallback compression:', error);
-    optimizationAvailable = false;
-}
+console.log('✅ Image optimization libraries loaded successfully');
 
 const queue = [];
 let running = 0;
@@ -32,6 +21,7 @@ function createQueueItem(file, options) {
         status: 'queued'
     }
 }
+
 export function addFilesToQueue(files, options) {
     const qEl = window.__IMG_CONVERTER.queueEl;
     for (const file of files) {
@@ -41,12 +31,14 @@ export function addFilesToQueue(files, options) {
     };
     updateStatus()
 }
+
 export function clearQueue() {
     queue.length = 0;
     running = 0;
     window.__IMG_CONVERTER.queueEl.innerHTML = '';
     updateStatus()
 }
+
 window.__IMG_CONVERTER = {
     ...(window.__IMG_CONVERTER || {}),
     clearQueue
@@ -133,14 +125,8 @@ async function canvasFromFile(file) {
         if (!ifds.length) throw new Error("No IFDs found in TIFF");
 
         const first = ifds[0];
-
-        // Required: actually decode the image first
         UTIF.decodeImage(buf, first);
-
-        // Extract pixel buffer (RGBA8)
         const rgba = UTIF.toRGBA8(first);
-
-        // Width/height from tags
         const width = first.width || first.t256;
         const height = first.height || first.t257;
 
@@ -148,7 +134,6 @@ async function canvasFromFile(file) {
             throw new Error("Invalid TIFF: missing dimensions");
         }
 
-        // Draw onto canvas
         const c = document.createElement('canvas');
         c.width = width;
         c.height = height;
@@ -187,142 +172,112 @@ async function exportCanvasToBlob(c, t, q) {
     return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej('toBlob failed'), t, q))
 }
 
-// Enhanced PNG optimization using multiple techniques
-async function optimizePNG(canvas, quality) {
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    
-    if (optimizationAvailable && encodePNG) {
-        try {
-            console.log(`🔄 Optimizing PNG with jSquash (quality: ${Math.round(quality * 100)}%)`);
-            
-            // More aggressive PNG optimization settings
-            const optimized = await encodePNG(imageData, {
-                level: 9, // Maximum compression
-                quality: Math.max(10, Math.min(90, Math.round(quality * 100))), // Ensure reasonable range
-                effort: 10, // Maximum effort
-                palette: true, // Use palette when beneficial
-                colors: quality < 0.7 ? 128 : 256 // Reduce colors for lower quality
-            });
-            
-            const blob = new Blob([optimized], { type: 'image/png' });
-            console.log(`✅ PNG optimized: ${Math.round(blob.size / 1024)} KB`);
-            return blob;
-        } catch (error) {
-            console.warn('❌ jSquash PNG optimization failed:', error);
-        }
-    }
-    
-    // Fallback: Try multiple quality levels to find best compression
-    console.log('🔄 Using fallback PNG optimization');
-    let bestBlob = null;
-    let bestSize = Infinity;
-    
-    // Try different canvas compression qualities
-    const qualities = [0.3, 0.5, 0.7, 0.9];
-    
-    for (const q of qualities) {
-        try {
-            const blob = await exportCanvasToBlob(canvas, 'image/png', q);
-            if (blob.size < bestSize) {
-                bestSize = blob.size;
-                bestBlob = blob;
-            }
-        } catch (error) {
-            console.warn(`Failed PNG compression at quality ${q}:`, error);
-        }
-    }
-    
-    if (bestBlob) {
-        console.log(`✅ PNG fallback optimization: ${Math.round(bestBlob.size / 1024)} KB`);
-        return bestBlob;
-    }
-    
-    // Final fallback
-    return await exportCanvasToBlob(canvas, 'image/png', quality);
-}
-
-// Enhanced optimization function
-async function optimizeCanvas(canvas, options) {
-    const originalSize = Math.round((canvas.width * canvas.height * 4) / 1024); // Approximate KB
-    console.log(`🎨 Optimizing ${options.type} (${canvas.width}x${canvas.height}, ~${originalSize} KB uncompressed)`);
+// Advanced PNG optimization function
+async function optimizePNGAdvanced(canvas, quality) {
+    console.log(`🔄 Starting advanced PNG optimization (quality: ${Math.round(quality * 100)}%)`);
     
     try {
+        // Step 1: Get basic PNG data first
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Step 2: Create a base PNG with jSquash
+        const basePngData = await encodePNG(imageData);
+        console.log(`📊 Base PNG size: ${Math.round(basePngData.byteLength / 1024)} KB`);
+        
+        // Step 3: Apply Oxipng optimization (this is the key!)
+        const optimizedData = await optimisePNG(basePngData, {
+            level: 6,           // Maximum optimization level
+            interlace: false,   // Don't use interlacing (saves space)
+            optimiseAlpha: true,// Optimize alpha channel
+            stripAll: true      // Remove all metadata
+        });
+        
+        const finalBlob = new Blob([optimizedData], { type: 'image/png' });
+        console.log(`✅ Advanced PNG optimized: ${Math.round(finalBlob.size / 1024)} KB (${Math.round((1 - finalBlob.size / basePngData.byteLength) * 100)}% reduction)`);
+        
+        return finalBlob;
+        
+    } catch (error) {
+        console.error('❌ Advanced PNG optimization failed:', error);
+        
+        // Fallback: Try basic PNG with aggressive quality reduction
+        console.log('🔄 Trying fallback PNG optimization...');
+        
+        // Reduce canvas size if quality is low (simulates color reduction)
+        let workingCanvas = canvas;
+        if (quality < 0.8) {
+            workingCanvas = document.createElement('canvas');
+            const reductionFactor = Math.max(0.5, quality);
+            workingCanvas.width = Math.round(canvas.width * reductionFactor);
+            workingCanvas.height = Math.round(canvas.height * reductionFactor);
+            
+            const ctx = workingCanvas.getContext('2d');
+            // Use lower quality scaling
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(canvas, 0, 0, workingCanvas.width, workingCanvas.height);
+            
+            // Scale back up with smoothing
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = canvas.width;
+            finalCanvas.height = canvas.height;
+            const finalCtx = finalCanvas.getContext('2d');
+            finalCtx.imageSmoothingEnabled = true;
+            finalCtx.drawImage(workingCanvas, 0, 0, canvas.width, canvas.height);
+            workingCanvas = finalCanvas;
+        }
+        
+        const fallbackBlob = await exportCanvasToBlob(workingCanvas, 'image/png', Math.max(0.1, quality * 0.7));
+        console.log(`⚠️ Fallback PNG: ${Math.round(fallbackBlob.size / 1024)} KB`);
+        return fallbackBlob;
+    }
+}
+
+async function optimizeCanvas(canvas, options) {
+    const startTime = Date.now();
+    
+    console.log(`🎨 Starting optimization for ${options.type} (${canvas.width}x${canvas.height})`);
+    
+    try {
+        let blob;
+        
         if (options.type === 'image/png') {
-            return await optimizePNG(canvas, options.quality || 0.8);
-        } 
-        else if (options.type === 'image/jpeg' && optimizationAvailable && encodeJPEG) {
-            console.log(`🔄 Optimizing JPEG with jSquash`);
+            // Use advanced PNG optimization
+            blob = await optimizePNGAdvanced(canvas, options.quality || 0.8);
+            
+        } else if (options.type === 'image/jpeg') {
+            console.log('🔄 Using jSquash JPEG encoder...');
             const ctx = canvas.getContext('2d');
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
-            const optimized = await encodeJPEG(imageData, {
-                quality: Math.round((options.quality || 0.8) * 100),
-                baseline: true,
-                arithmetic: false,
-                progressive: true,
-                optimize_coding: true,
-                smoothing: 0,
-                color_space: 3,
-                quant_table: 3,
-                trellis_multipass: true,
-                trellis_opt_zero: true,
-                trellis_opt_table: true
-            });
-            
-            const blob = new Blob([optimized], { type: 'image/jpeg' });
+            const quality = Math.round((options.quality || 0.8) * 100);
+            const jpegData = await encodeJPEG(imageData, { quality });
+            blob = new Blob([jpegData], { type: 'image/jpeg' });
             console.log(`✅ JPEG optimized: ${Math.round(blob.size / 1024)} KB`);
-            return blob;
-        }
-        else if (options.type === 'image/webp' && optimizationAvailable && encodeWebP) {
-            console.log(`🔄 Optimizing WebP with jSquash`);
+            
+        } else if (options.type === 'image/webp') {
+            console.log('🔄 Using jSquash WebP encoder...');
             const ctx = canvas.getContext('2d');
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
-            const optimized = await encodeWebP(imageData, {
-                quality: Math.round((options.quality || 0.8) * 100),
-                target_size: 0,
-                target_PSNR: 0,
-                method: 6,
-                sns_strength: 50,
-                filter_strength: 60,
-                filter_sharpness: 0,
-                filter_type: 1,
-                partitions: 0,
-                segments: 4,
-                pass: 1,
-                show_compressed: 0,
-                preprocessing: 0,
-                autofilter: 0,
-                partition_limit: 0,
-                alpha_compression: 1,
-                alpha_filtering: 1,
-                alpha_quality: 100,
-                lossless: 0,
-                exact: 0,
-                image_hint: 0,
-                emulate_jpeg_size: 0,
-                thread_level: 0,
-                low_memory: 0,
-                near_lossless: 100,
-                use_delta_palette: 0,
-                use_sharp_yuv: 0
-            });
-            
-            const blob = new Blob([optimized], { type: 'image/webp' });
+            const quality = Math.round((options.quality || 0.8) * 100);
+            const webpData = await encodeWebP(imageData, { quality });
+            blob = new Blob([webpData], { type: 'image/webp' });
             console.log(`✅ WebP optimized: ${Math.round(blob.size / 1024)} KB`);
-            return blob;
+            
+        } else {
+            console.log('🔄 Using browser native encoder...');
+            blob = await exportCanvasToBlob(canvas, options.type, options.quality);
+            console.log(`✅ Native encoding: ${Math.round(blob.size / 1024)} KB`);
         }
-        else {
-            console.log('🔄 Using standard browser compression');
-            const blob = await exportCanvasToBlob(canvas, options.type, options.quality);
-            console.log(`✅ Standard compression: ${Math.round(blob.size / 1024)} KB`);
-            return blob;
-        }
+        
+        console.log(`⏱️ Total optimization time: ${Date.now() - startTime}ms`);
+        return blob;
+        
     } catch (error) {
         console.error('❌ Optimization failed:', error);
-        // Fallback to original method
-        return await exportCanvasToBlob(canvas, options.type, options.quality);
+        console.log('🔄 Falling back to browser encoding...');
+        const blob = await exportCanvasToBlob(canvas, options.type, options.quality);
+        console.log(`⚠️ Fallback encoding: ${Math.round(blob.size / 1024)} KB`);
+        return blob;
     }
 }
 
@@ -335,7 +290,6 @@ async function processItem(it) {
     pb.style.width = '20%';
     let src = await canvasFromFile(it.file);
 
-    // Apply aspect ratio crop first (if provided)
     if (it.options.aspectRatio) {
       src = cropCanvasToAspectRatio(src, it.options.aspectRatio, it.options.cropPosition);
     }
@@ -344,20 +298,15 @@ async function processItem(it) {
     const resized = scaleCanvas(src, it.options.size);
 
     pb.style.width = '70%';
-    
-    // Use optimization
     const blob = await optimizeCanvas(resized, it.options);
 
     pb.style.width = '90%';
 
-    // Filename with prefix/suffix
+    // Filename logic
     const baseName = it.file.name.replace(/\.[^.]+$/, '');
-
-    // Get original extension
     const originalExt = it.file.name.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
     let ext = it.options.type.split('/')[1] || 'png';
 
-    // For JPEG files, preserve original extension (.jpg vs .jpeg)
     if (ext === 'jpeg' && (originalExt === 'jpg' || originalExt === 'jpeg')) {
         ext = originalExt;
     }
@@ -365,6 +314,10 @@ async function processItem(it) {
     const finalName = (it.options.prefix || '') + baseName + (it.options.suffix || '') + '.' + ext;
 
     console.log(`💾 Saving: ${finalName} (${Math.round(blob.size/1024)} KB)`);
+    
+    // Update UI with before/after sizes
+    it._el.querySelector('.meta').innerHTML = `<strong>${it.file.name}</strong> • ${Math.round(it.file.size/1024)} KB → ${Math.round(blob.size/1024)} KB`;
+    
     saveAs(blob, finalName);
 
     pb.style.width = '100%';
@@ -373,7 +326,7 @@ async function processItem(it) {
   } catch (e) {
     console.error('❌ Processing failed:', e);
     it.status = 'error';
-    it._el.querySelector('.meta').innerHTML += '<div style="color:red">Error</div>';
+    it._el.querySelector('.meta').innerHTML += '<div style="color:red">Error: ' + e.message + '</div>';
   } finally {
     updateStatus();
   }
